@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net/http"
 	"time"
 
 	//	"time"
@@ -37,6 +38,18 @@ func createClientSet() (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
+func hello(w http.ResponseWriter, req *http.Request) {
+	fmt.Fprintf(w, "hello\n")
+}
+
+func headers(w http.ResponseWriter, req *http.Request) {
+	for name, headers := range req.Header {
+		for _, h := range headers {
+			fmt.Fprintf(w, "%v: %v\n", name, h)
+		}
+	}
+}
+
 func main() {
 	domain := flag.String("domain", "n.tripadvisor.com", "Domain name")
 	cluster := flag.String("cluster", "ndmad2", "Kubernetes cluster")
@@ -65,6 +78,8 @@ func main() {
 			fmt.Println("HERE IT IS: " + string(podsJSON))
 		}
 	}()
-	for {
-	}
+
+	http.HandleFunc("/hello", hello)
+	http.HandleFunc("/headers", headers)
+	http.ListenAndServe(":8090", nil)
 }

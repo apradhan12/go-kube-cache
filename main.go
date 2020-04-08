@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	//	"time"
@@ -38,8 +39,11 @@ func createClientSet() (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
-func hello(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(w, "hello\n")
+func getKindHandler(kind string, kc *kubr.K8sResourceCache) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		podsJSON, _ := json.Marshal(kc.GetResourceList(kind)[0:10])
+		fmt.Fprintf(w, string(podsJSON)+"\n")
+	}
 }
 
 func headers(w http.ResponseWriter, req *http.Request) {
@@ -53,7 +57,7 @@ func headers(w http.ResponseWriter, req *http.Request) {
 func main() {
 	domain := flag.String("domain", "n.tripadvisor.com", "Domain name")
 	cluster := flag.String("cluster", "ndmad2", "Kubernetes cluster")
-
+	objsToCache := flag.String("cache", "namespaces,ingresses", "A comma-delimited list of Kubernetes object types to cache")
 	flag.Parse()
 
 	clientset, err := createClientSet()
@@ -62,8 +66,9 @@ func main() {
 	}
 	fmt.Println("Input params: Domain: ", *domain, "; cluster: ", *cluster)
 
+	kinds := strings.Split(*objsToCache, ",")
+
 	// kube resource cache (pointer)
-	kinds := []string{"namespaces", "ingresses"}
 	kc := kubr.NewK8sResourceCache(clientset, kinds)
 	fmt.Println("NewK8sResource cache created ")
 
@@ -79,7 +84,8 @@ func main() {
 		}
 	}()
 
-	http.HandleFunc("/hello", hello)
-	http.HandleFunc("/headers", headers)
+	for _, kind := range kinds {
+		http.HandleFunc("/"+kind, getKindHandler(kind, kc))
+	}
 	http.ListenAndServe(":8090", nil)
 }

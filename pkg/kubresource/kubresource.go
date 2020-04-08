@@ -39,10 +39,17 @@ var typeMap = map[string]func(clientset *kubernetes.Clientset) (runtime.Object, 
 	"ingresses": func(clientset *kubernetes.Clientset) (runtime.Object, cache.Getter) {
 		return &v1beta1.Ingress{}, clientset.NetworkingV1beta1().RESTClient()
 	},
+	"networkpolicies": func(clientset *kubernetes.Clientset) (runtime.Object, cache.Getter) {
+		return &v1beta1.NetworkPolicy{}, clientset.NetworkingV1beta1().RESTClient()
+	},
 }
 
 func (p *K8sResourceCache) updateJSONOutput() {
-	for kind, store := range p.stores {
+	p.mux.Lock()
+	stores := p.stores
+	p.mux.Unlock()
+
+	for kind, store := range stores {
 		jsonOutput, _ := json.Marshal(store.List())
 		p.mux.Lock()
 		p.output[kind] = string(jsonOutput)
@@ -96,10 +103,16 @@ func NewK8sResourceCache(clientset *kubernetes.Clientset, kinds []string) *K8sRe
 
 // GetResourceList ... Gets resource list
 func (p *K8sResourceCache) GetResourceList(kind string) []interface{} {
-	return p.stores[kind].List()
+	p.mux.Lock()
+	resources := p.stores[kind].List()
+	p.mux.Unlock()
+	return resources
 }
 
 // GetJSONOutput ... Gets JSON output
 func (p *K8sResourceCache) GetJSONOutput(kind string) string {
-	return p.output[kind]
+	p.mux.Lock()
+	jsonOutput := p.output[kind]
+	p.mux.Unlock()
+	return jsonOutput
 }

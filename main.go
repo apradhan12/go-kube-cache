@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	//	"time"
 
@@ -41,7 +40,7 @@ func createClientSet() (*kubernetes.Clientset, error) {
 
 func getKindHandler(kind string, kc *kubr.K8sResourceCache) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
-		podsJSON, _ := json.Marshal(kc.GetResourceList(kind)[0:10])
+		podsJSON, _ := json.Marshal(kc.GetResourceList(kind))
 		fmt.Fprintf(w, string(podsJSON)+"\n")
 	}
 }
@@ -59,30 +58,17 @@ func main() {
 	cluster := flag.String("cluster", "ndmad2", "Kubernetes cluster")
 	objsToCache := flag.String("cache", "namespaces,ingresses", "A comma-delimited list of Kubernetes object types to cache")
 	flag.Parse()
+	kinds := strings.Split(*objsToCache, ",")
 
 	clientset, err := createClientSet()
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Input params: Domain: ", *domain, "; cluster: ", *cluster)
-
-	kinds := strings.Split(*objsToCache, ",")
+	fmt.Println(fmt.Sprintf("Input params: Domain: %s, cluster: %s, kinds to cache: %s", *domain, *cluster, kinds))
 
 	// kube resource cache (pointer)
 	kc := kubr.NewK8sResourceCache(clientset, kinds)
-	fmt.Println("NewK8sResource cache created ")
-
-	ticker := time.NewTicker(time.Second * 2)
-	go func() {
-		for ; true; <-ticker.C {
-			// TODO refine based on k8s store changes, add a channel to see if any changes are watched
-			fmt.Println("we still here!")
-			ingresses := kc.GetResourceList("ingresses")
-			fmt.Println("we got the pods???!?!?!?!?!?")
-			podsJSON, _ := json.Marshal(ingresses[0:10])
-			fmt.Println("HERE IT IS: " + string(podsJSON))
-		}
-	}()
+	fmt.Println("NewK8sResource cache created")
 
 	for _, kind := range kinds {
 		http.HandleFunc("/"+kind, getKindHandler(kind, kc))

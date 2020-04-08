@@ -3,6 +3,7 @@ package kubresource
 // talk to k8s API server to get the namespace objects and pods objects
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -24,6 +25,7 @@ import (
 // K8sResourceCache ... local cache for faster API serving
 type K8sResourceCache struct {
 	stores map[string]cache.Store
+	output map[string]string
 	mux    sync.Mutex
 }
 
@@ -39,6 +41,20 @@ var typeMap = map[string]func(clientset *kubernetes.Clientset) (runtime.Object, 
 	},
 }
 
+func (p *K8sResourceCache) updateJSONOutput() {
+	for kind, store := range p.stores {
+		jsonOutput, _ := json.Marshal(store.List())
+		p.mux.Lock()
+		p.output[kind] = string(jsonOutput)
+		p.mux.Unlock()
+	}
+}
+
+func (p *K8sResourceCache) updateK8sResourceCache() {
+	fmt.Println("Refresh JSON outputs")
+	p.updateJSONOutput()
+}
+
 // NewK8sResourceCache ... get k8s resources in the cluster
 func NewK8sResourceCache(clientset *kubernetes.Clientset, kinds []string) *K8sResourceCache {
 	if clientset == nil {
@@ -47,6 +63,7 @@ func NewK8sResourceCache(clientset *kubernetes.Clientset, kinds []string) *K8sRe
 
 	kc := K8sResourceCache{
 		stores: make(map[string]cache.Store),
+		output: make(map[string]string),
 	}
 
 	for _, resourceKind := range kinds {
@@ -65,10 +82,24 @@ func NewK8sResourceCache(clientset *kubernetes.Clientset, kinds []string) *K8sRe
 		fmt.Println(fmt.Sprintf("%s store synced", resourceKind))
 		kc.stores[resourceKind] = store
 	}
+
+	ticker := time.NewTicker(time.Second * 30)
+	go func() {
+		for ; true; <-ticker.C {
+			// TODO refine based on k8s store changes, add a channel to see if any changes are watched
+			kc.updateK8sResourceCache()
+		}
+	}()
+
 	return &kc
 }
 
 // GetResourceList ... Gets resource list
-func (cache *K8sResourceCache) GetResourceList(kind string) []interface{} {
-	return cache.stores[kind].List()
+func (p *K8sResourceCache) GetResourceList(kind string) []interface{} {
+	return p.stores[kind].List()
+}
+
+// GetJSONOutput ... Gets JSON output
+func (p *K8sResourceCache) GetJSONOutput(kind string) string {
+	return p.output[kind]
 }

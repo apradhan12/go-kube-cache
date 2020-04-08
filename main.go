@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -40,8 +39,7 @@ func createClientSet() (*kubernetes.Clientset, error) {
 
 func getKindHandler(kind string, kc *kubr.K8sResourceCache) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
-		podsJSON, _ := json.Marshal(kc.GetResourceList(kind))
-		fmt.Fprintf(w, string(podsJSON)+"\n")
+		fmt.Fprintf(w, kc.GetJSONOutput(kind))
 	}
 }
 

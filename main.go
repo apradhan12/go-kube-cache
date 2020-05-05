@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	kubr "gitlab.dev.tripadvisor.com/PIT/go-kube-sidecar/pkg/kubresource"
+	selector "gitlab.dev.tripadvisor.com/PIT/go-kube-sidecar/pkg/selector"
 )
 
 var (
@@ -37,16 +39,41 @@ func createClientSet() (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
-func getKindHandler(kind string, kc *kubr.K8sResourceCache) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, req *http.Request) {
-		fmt.Fprintf(w, kc.GetJSONOutput(kind))
+// ParseQueryParams converts a map of query params to a slice of selectors.
+// The function assumes that there is exactly one query param, which is either
+// fieldSelector or labelSelector.
+func ParseQueryParams(queryParams map[string][]string) (selectors []selector.Selector) {
+	selectors = make([]selector.Selector, 0)
+	for selectorKind, valueList := range queryParams {
+		// allows multiple selectors of the same kind
+		for _, value := range valueList {
+			if value != "" {
+				selectors = append(selectors, selector.Selector{Kind: selectorKind, Contents: value})
+			}
+		}
 	}
+	return selectors
+	// keyValuePair = strings.Split(queryParams[selectorKind][0], "=")
 }
 
-func headers(w http.ResponseWriter, req *http.Request) {
-	for name, headers := range req.Header {
-		for _, h := range headers {
-			fmt.Fprintf(w, "%v: %v\n", name, h)
+// PairLength represents the length of a slice representing a pair of key and value
+var PairLength = 2
+
+func getKindHandler(kind string, kc *kubr.K8sResourceCache) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		queryParamsMap := req.URL.Query()
+		selectors := ParseQueryParams(queryParamsMap)
+		if len(queryParamsMap) == 0 || len(selectors) == 0 {
+			fmt.Fprintf(w, kc.GetJSONOutput(kind))
+		} else {
+			filteredObjects, err := kc.GetFilteredObjects(kind, selectors)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				fmt.Fprintf(w, err.Error())
+			} else {
+				jsonOutput, _ := json.Marshal(filteredObjects)
+				fmt.Fprintf(w, string(jsonOutput))
+			}
 		}
 	}
 }

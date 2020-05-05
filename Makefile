@@ -1,6 +1,6 @@
 NS = techops-docker.maven.dev.tripadvisor.com/utils
 REPO = go-kube-sidecar
-VERSION ?= 0.2
+VERSION ?= 0.3
 
 PATH  := ~/go/bin:$(PATH)
 

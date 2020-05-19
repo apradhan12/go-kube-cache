@@ -165,27 +165,29 @@ var NamespaceField = []string{"metadata", "namespace"}
 // matchesSelectors checks if the given reflected value matches all the given selectors
 func matchesSelectors(obj reflect.Value, selectors []selector.Selector) (bool, error) {
 	for _, selector := range selectors {
-		var matches bool
-		switch kind := selector.Kind; kind {
-		case "labelSelector":
-			keyValuePair := strings.Split(selector.Contents, "=")
-			if len(keyValuePair) != 2 {
-				return false, fmt.Errorf("Key and value are not matched correctly: %s", selector.Contents)
+		for _, constraint := range strings.Split(selector.Contents, ",") {
+			var matches bool
+			switch kind := selector.Kind; kind {
+			case "labelSelector":
+				keyValuePair := strings.Split(constraint, "=")
+				if len(keyValuePair) != 2 {
+					return false, fmt.Errorf("Key and value are not matched correctly: %s", constraint)
+				}
+				matches = isFieldPresent(obj, append(LabelsField, keyValuePair[0]), keyValuePair[1], true)
+			case "fieldSelector":
+				keyValuePair := strings.Split(constraint, "=")
+				if len(keyValuePair) != 2 {
+					return false, fmt.Errorf("Key and value are not matched correctly: %s", constraint)
+				}
+				matches = isFieldPresent(obj, strings.Split(keyValuePair[0], "."), keyValuePair[1], false)
+			case "namespace":
+				matches = isFieldPresent(obj, NamespaceField, constraint, false)
+			default:
+				return false, fmt.Errorf("%s is not a valid selector kind", kind)
 			}
-			matches = isFieldPresent(obj, append(LabelsField, keyValuePair[0]), keyValuePair[1], true)
-		case "fieldSelector":
-			keyValuePair := strings.Split(selector.Contents, "=")
-			if len(keyValuePair) != 2 {
-				return false, fmt.Errorf("Key and value are not matched correctly: %s", selector.Contents)
+			if !matches {
+				return false, nil
 			}
-			matches = isFieldPresent(obj, strings.Split(keyValuePair[0], "."), keyValuePair[1], false)
-		case "namespace":
-			matches = isFieldPresent(obj, NamespaceField, selector.Contents, false)
-		default:
-			return false, fmt.Errorf("%s is not a valid selector kind", kind)
-		}
-		if !matches {
-			return false, nil
 		}
 	}
 	return true, nil

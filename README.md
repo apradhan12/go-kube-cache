@@ -1,4 +1,4 @@
-# Go Kubernetes Sidecar
+# Go Kubernetes Cache
 
 ## Purpose
 

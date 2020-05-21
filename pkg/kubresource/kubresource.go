@@ -25,7 +25,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	// "k8s.io/client-go/tools/clientcmd/api"
-	selector "gitlab.dev.tripadvisor.com/PIT/go-kube-sidecar/pkg/selector"
+	selector "github.com/apradhan12/go-kube-cache/pkg/selector"
 )
 
 // K8sResourceCache ... local cache for faster API serving

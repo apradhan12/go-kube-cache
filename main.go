@@ -14,8 +14,8 @@ import (
 	kcfcf "github.com/phsiao/kcfcf"
 	log "github.com/sirupsen/logrus"
 
-	kubr "gitlab.dev.tripadvisor.com/PIT/go-kube-sidecar/pkg/kubresource"
-	selector "gitlab.dev.tripadvisor.com/PIT/go-kube-sidecar/pkg/selector"
+	kubr "github.com/apradhan12/go-kube-cache/pkg/kubresource"
+	selector "github.com/apradhan12/go-kube-cache/pkg/selector"
 )
 
 var (

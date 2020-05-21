@@ -14,12 +14,12 @@ COPY main.go main.go
 COPY pkg/ pkg/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o go-kube-sidecar main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o go-kube-cache main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:latest
 WORKDIR /
-COPY --from=builder /workspace/go-kube-sidecar .
+COPY --from=builder /workspace/go-kube-cache .
 
-ENTRYPOINT ["/go-kube-sidecar"]
+ENTRYPOINT ["/go-kube-cache"]

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -12,7 +13,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	kcfcf "github.com/phsiao/kcfcf"
-	log "github.com/sirupsen/logrus"
 
 	kubr "github.com/apradhan12/go-kube-cache/pkg/kubresource"
 	selector "github.com/apradhan12/go-kube-cache/pkg/selector"
@@ -89,11 +89,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(fmt.Sprintf("Input params: Domain: %s, cluster: %s, kinds to cache: %s", *domain, *cluster, kinds))
+	log.Println(fmt.Sprintf("Input params: Domain: %s, cluster: %s, kinds to cache: %s", *domain, *cluster, kinds))
 
 	// kube resource cache (pointer)
 	kc := kubr.NewK8sResourceCache(clientset, kinds)
-	fmt.Println("NewK8sResource cache created")
+	log.Println("NewK8sResource cache created")
 
 	for _, kind := range kinds {
 		http.HandleFunc("/"+kind, getKindHandler(kind, kc))

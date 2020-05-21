@@ -80,14 +80,17 @@ func getKindHandler(kind string, kc *kubr.K8sResourceCache) func(http.ResponseWr
 }
 
 func main() {
-	log.SetFlags(0)
-	log.SetOutput(ioutil.Discard)
-
 	domain := flag.String("domain", "n.tripadvisor.com", "Domain name")
 	cluster := flag.String("cluster", "ndmad2", "Kubernetes cluster")
+	showLogs := flag.Bool("logs", false, "Show logs on stdout")
 	objsToCache := flag.String("cache", "namespaces,ingresses", "A comma-delimited list of Kubernetes object types to cache")
 	flag.Parse()
 	kinds := strings.Split(*objsToCache, ",")
+
+	if !*showLogs {
+		log.SetFlags(0)
+		log.SetOutput(ioutil.Discard)
+	}
 
 	clientset, err := createClientSet()
 	if err != nil {
